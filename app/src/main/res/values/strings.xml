@@ -1,4 +1,5 @@
 <resources>
     <string name="app_name">Samples2</string>
     <string name="delete">Удалить</string>
+    <string name="add">Добавить</string>
 </resources>

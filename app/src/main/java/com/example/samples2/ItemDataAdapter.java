@@ -16,8 +16,11 @@ public class ItemDataAdapter extends BaseAdapter {
 
     private List<ItemData> items;
     private LayoutInflater inflater;
+    private ItemRemoveClickListener removeClickListener;
 
-    ItemDataAdapter(Context context, List<ItemData> items) {
+    ItemDataAdapter(Context context, List<ItemData> items,
+                    ItemRemoveClickListener removeClickListener) {
+        this.removeClickListener = removeClickListener;
         if (items == null) {
             this.items = new ArrayList<>();
         } else {
@@ -56,7 +59,7 @@ public class ItemDataAdapter extends BaseAdapter {
     }
 
     @Override
-    public View getView(int position, View convertView, ViewGroup parent) {
+    public View getView(final int position, View convertView, ViewGroup parent) {
         View view = convertView;
         if (view == null) {
             view = inflater.inflate(R.layout.item_list_view, parent, false);
@@ -75,8 +78,7 @@ public class ItemDataAdapter extends BaseAdapter {
         deleteButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                items.remove(itemData);
-                notifyDataSetChanged();
+                removeClickListener.onRemoveClicked(position);
             }
         });
 
