@@ -75,12 +75,7 @@ public class ItemDataAdapter extends BaseAdapter {
         image.setImageDrawable(itemData.getImage());
         title.setText(itemData.getTitle());
         subtitle.setText(itemData.getSubtitle());
-        deleteButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                removeClickListener.onRemoveClicked(position);
-            }
-        });
+        deleteButton.setOnClickListener(view1 -> removeClickListener.onRemoveClicked(position));
 
         return view;
     }

@@ -2,22 +2,20 @@ package com.example.samples2;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
-import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
-import android.Manifest;
-import android.content.pm.PackageManager;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.os.Environment;
-import android.view.View;
-import android.widget.AdapterView;
 import android.widget.ListView;
 import android.widget.Toast;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -27,70 +25,44 @@ import java.util.Random;
 public class MainActivity extends AppCompatActivity {
 
     private ItemDataAdapter adapter;
-    private List<Drawable> images = new ArrayList<>();
-    private static final int CODE_WRITE_REQUEST = 78;
+    private final List<Drawable> images = new ArrayList<>();
     private File file;
+    private static final String divider = ";";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        int permissionStatus = ContextCompat.checkSelfPermission(this,
-                Manifest.permission.WRITE_EXTERNAL_STORAGE);
-        if (permissionStatus == PackageManager.PERMISSION_GRANTED) {
-            generateInformation();
-        } else {
-            ActivityCompat.requestPermissions(this, new String[]
-                    {Manifest.permission.WRITE_EXTERNAL_STORAGE}, CODE_WRITE_REQUEST);
-        }
+        file = new File(this.getExternalFilesDir(null), "samples_1.txt");
+
+        adapter = new ItemDataAdapter(this, null, position ->  {
+                adapter.removeItem(position);
+                writeAll();
+        });
+        fillImages();
+
+        readInfo();
 
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
         ListView listView = findViewById(R.id.list_view);
         FloatingActionButton floatingButton = findViewById(R.id.floating_button);
 
-        fillImages();
-        adapter = new ItemDataAdapter(this, null, new ItemRemoveClickListener() {
-            @Override
-            public void onRemoveClicked(int position) {
-                adapter.removeItem(position);
-                file.delete();
-                loadInfo();
-            }
-        });
         listView.setAdapter(adapter);
 
-        listView.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
-            @Override
-            public boolean onItemLongClick(AdapterView<?> adapterView, View view, int i, long l) {
-                ItemData itemData = adapter.getItem(i);
-                Toast.makeText(MainActivity.this, itemData.getTitle(), Toast.LENGTH_SHORT).show();
-                return true;
-            }
+
+        listView.setOnItemLongClickListener((adapterView, view, i, l) -> {
+            ItemData itemData = adapter.getItem(i);
+            Toast.makeText(MainActivity.this, itemData.getTitle(), Toast.LENGTH_SHORT).show();
+            return true;
         });
 
-        floatingButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                generateInformation();
-                loadInfo();
-            }
+        floatingButton.setOnClickListener(view -> {
+            ItemData item = generateInformation();
+            writeItem(item);
+            adapter.addItem(item);
         });
-    }
-
-    public void onRequestPermissionResult(int requestCode, String[] permissions,
-                                          int[] grantedResults) {
-        if (requestCode == CODE_WRITE_REQUEST) {
-            if (grantedResults.length > 0 &&
-                    grantedResults[0] == PackageManager.PERMISSION_GRANTED) {
-                loadInfo();
-            } else {
-                Toast.makeText(this, "Невозможно загрузить информацию без разрешения",
-                        Toast.LENGTH_LONG).show();
-                finish();
-            }
-        }
     }
 
     public boolean isExternalStorageWritable() {
@@ -111,34 +83,55 @@ public class MainActivity extends AppCompatActivity {
                 android.R.drawable.ic_menu_call));
     }
 
-    private void generateInformation() {
+    private ItemData generateInformation() {
         Random random = new Random();
         int i = adapter.getCount();
-        adapter.addItem(new ItemData(
+        return new ItemData(
                 images.get(random.nextInt(images.size())), "Project #" + (i + 1),
-                "Theme of project #" + (i + 1)));
+                "Theme of project #" + (i + 1));
     }
 
-    private void loadInfo() {
-        if (isExternalStorageWritable()) {
-            file = new File(this.getExternalFilesDir(null),
-            "samples.txt");
-            FileWriter fileWriter = null;
-            try {
-                fileWriter = new FileWriter(file, true);
-                for (int i = 0; i < adapter.getCount(); i++) {
-                    fileWriter.write(adapter.getItem(i).getTitle() + " | " +
-                            adapter.getItem(i).getSubtitle() + "; ");
+    private void readInfo() {
+        try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
+            String line;
+            while((line = reader.readLine()) != null) {
+                String[] strings = line.split(divider);
+                Drawable image = images.get(Integer.parseInt(strings[0]));
+                String title = strings[1];
+                String subtitle = strings[2];
+                adapter.addItem(new ItemData(image, title, subtitle));
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void writeItem(ItemData item) {
+        if(isExternalStorageWritable()) {
+            try(BufferedWriter writer = new BufferedWriter(new FileWriter(file, true))) {
+                writeItem(writer,item);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private void writeAll() {
+        if(isExternalStorageWritable()) {
+            try (BufferedWriter writer = new BufferedWriter(new FileWriter(file, false))) {
+                for(int i = 0; i < adapter.getCount(); i++) {
+                    writeItem(writer, adapter.getItem(i));
                 }
             } catch (IOException e) {
                 e.printStackTrace();
-            } finally {
-                try {
-                    fileWriter.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
             }
         }
+    }
+
+    private void writeItem(BufferedWriter writer, ItemData item) throws IOException {
+        writer.write(images.indexOf(item.getImage()) + divider +
+                item.getTitle() + divider +
+                item.getSubtitle() + divider);
+        writer.newLine();
     }
 }
